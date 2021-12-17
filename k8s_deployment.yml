@@ -1,0 +1,87 @@
+#persistance volume
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: azure-managed-disk
+spec:
+  capacity:
+    storage: 15Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: managed-standard
+  azureDisk: 
+    diskName: my-data-disk.vhd 
+    diskURI: https://someacount.blob.core.windows.net/vhds/my-data-disk.vhd 
+    cachingMode: ReadOnly  
+    fsType: ext4  
+    readOnly: false 
+
+---
+# persistance volume claim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: azure-managed-disk-claim
+spec:
+  storageClassName: managed-standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+# Service yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+
+
+---
+# deployment yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-demo
+  labels:
+    app: nginx
+spec:
+  replicas: 10
+  minReadySeconds: 5
+  selector:
+    matchLabels:
+      app: nginx
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+        maxSurge: 2
+        maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: my-persistent-storage
+          mountPath: /etc/nginx/nginx.conf
+      volumes:
+      - name: persistent—claim-storage
+        persistentVolumeClaim:
+          claimName: azure-managed-disk-claim
