@@ -1,0 +1,54 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('scm checkout') {
+            steps {
+                git branch: 'k8s-branch', credentialsId: 'shubhranshu007', url: 'https://github.com/shubhranshu007/K8s.git'
+            }
+        }
+        
+        stage('create docker image') {
+            steps {
+                
+                sh '''docker build -t nginx:latest .
+                docker tag nginx shubhranshu19/nginx:nginx'''
+
+                withCredentials([string(credentialsId: 'REGISTRY', variable: 'PASSWORD')]) 
+                {
+                    sh 'docker login -u shubhranshu19 -p $PASSWORD'
+                }
+                
+            }
+                
+        }
+        
+        
+        stage('push image to registry') {
+            steps {
+                sh 'docker push shubhranshu19/nginx:nginx'
+            }
+        }
+      
+        
+        stage('Deploy to k8s')
+        {
+            steps{
+                sshagent(['k8s-master'])
+                {
+                    sh 'scp -r -o StrictHostKeyChecking=no sysops@k8s-master:/linkfire'
+                    
+                    script{
+                        try{
+                            sh 'ssh sysops@k8s-master kubectl apply -f /linkfire/k8s_deployment.yml --kubeconfig=/linkfre/kube.yaml'
+                            }catch(error)
+                            {
+
+                            }
+                    }
+                }
+            }
+        }
+    }
+}
+
