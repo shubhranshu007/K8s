@@ -75,7 +75,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: nginx
+        image: shubhranshu19/nginx:nginx
         ports:
         - containerPort: 80
         volumeMounts:
